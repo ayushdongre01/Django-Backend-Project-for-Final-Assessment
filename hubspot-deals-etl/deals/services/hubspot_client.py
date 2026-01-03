@@ -1,23 +1,31 @@
+import os
 import requests
-from django.conf import settings
 
-BASE_URL = "https://api.hubapi.com"
+HUBSPOT_BASE_URL = "https://api.hubapi.com"
+ACCESS_TOKEN = os.getenv("HUBSPOT_ACCESS_TOKEN")
 
-HEADERS = {
-    "Authorization": f"Bearer {settings.HUBSPOT_ACCESS_TOKEN}",
-    "Content-Type": "application/json",
-}
+def fetch_deals(after=None, limit=50):
+    url = f"{HUBSPOT_BASE_URL}/crm/v3/objects/deals"
 
-def fetch_deals(limit=50, after=None):
-    params = {"limit": limit}
+    params = {
+        "limit": limit,
+        "archived": "false",
+        "properties": "dealname,dealstage,pipeline,amount,closedate",
+    }
+
     if after:
         params["after"] = after
 
-    response = requests.get(
-        f"{BASE_URL}/crm/v3/objects/deals",
-        headers=HEADERS,
-        params=params,
-        timeout=30
-    )
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        # ❌ DO NOT set Content-Type for GET
+    }
+
+    response = requests.get(url, headers=headers, params=params)
+
+    # Temporary debug (VERY IMPORTANT)
+    if response.status_code != 200:
+        print("HubSpot error:", response.text)
+
     response.raise_for_status()
     return response.json()
