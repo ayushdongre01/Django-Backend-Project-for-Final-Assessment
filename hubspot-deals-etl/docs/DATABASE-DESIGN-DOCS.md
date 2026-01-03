@@ -1,4 +1,4 @@
-# 🗄️ Scan Job Database Schema Template
+# 🗄️ HubSpot Deals Scan Job Database Schema
 
 This document provides a database schema template for implementing scan job functionality with two core tables: ScanJob and Results.
 
@@ -6,7 +6,8 @@ This document provides a database schema template for implementing scan job func
 
 ## 📋 Overview
 
-The Scan Job database schema consists of two main tables:
+The Scan Job database schema consists of two main tables used for
+HubSpot Deals extraction:
 
 1. **ScanJob** - Core scan job management and tracking
 2. **[ResultTable]** - Storage for scan results and extracted data
@@ -49,24 +50,42 @@ CREATE INDEX idx_scan_org_status ON scan_jobs(organization_id, status);
 
 ---
 
-### 2. [ResultTable] Table (Completely Customizable)
+### 2. DealResults Table
+
 
 **Purpose**: Store scan results and extracted data - **CUSTOMIZE FIELDS FOR YOUR DATA TYPE**
-
-| **Column Name**         | **Type**    | **Constraints**           | **Description**                          |
-|-------------------------|-------------|---------------------------|------------------------------------------|
-| `id`                    | String      | PRIMARY KEY               | Unique result identifier                 |
-| `scan_job_id`           | String      | FOREIGN KEY, NOT NULL     | Reference to scan_jobs.id               |
-| `[custom_field_1]`      | String/JSON | CUSTOMIZABLE              | **Replace with your data fields**       |
-| `[custom_field_2]`      | String/JSON | CUSTOMIZABLE              | **Replace with your data fields**       |
-| `[custom_field_3]`      | String/JSON | CUSTOMIZABLE              | **Replace with your data fields**       |
-| `[custom_field_4]`      | String/JSON | CUSTOMIZABLE              | **Replace with your data fields**       |
-| `[custom_field_5]`      | String/JSON | CUSTOMIZABLE              | **Replace with your data fields**       |
-| `[custom_field_n]`      | String/JSON | CUSTOMIZABLE              | **Add as many fields as needed**        |
-| `created_at`            | DateTime    | NOT NULL                  | Record creation timestamp               |
-| `updated_at`            | DateTime    | NOT NULL                  | Record last update timestamp            |
+| Column Name        | Type        | Constraints                 | Description |
+|--------------------|-------------|-----------------------------|-------------|
+| id                 | String      | PRIMARY KEY                 | Internal result identifier |
+| scan_job_id        | String      | FOREIGN KEY, NOT NULL       | Reference to scan_jobs.id |
+| hubspot_deal_id    | String      | NOT NULL, INDEX             | Deal ID from HubSpot |
+| deal_name          | String      | NULLABLE                    | Name of the deal |
+| deal_stage         | String      | NULLABLE                    | Current deal stage |
+| pipeline           | String      | NULLABLE                    | Deal pipeline |
+| amount             | Decimal     | NULLABLE                    | Deal amount |
+| close_date         | DateTime    | NULLABLE                    | Deal close date |
+| deal_properties    | JSON        | NULLABLE                    | Raw deal properties from HubSpot |
+| created_at         | DateTime    | NOT NULL                    | Record creation timestamp |
+| updated_at         | DateTime    | NOT NULL                    | Record update timestamp |
 
 **🎯 EXAMPLES - Replace with YOUR custom fields:**
+
+**For Deal Extraction:**
+CREATE TABLE deal_results (
+    id VARCHAR PRIMARY KEY,
+    scan_job_id VARCHAR NOT NULL REFERENCES scan_jobs(id),
+    hubspot_deal_id VARCHAR NOT NULL,
+    deal_name VARCHAR,
+    deal_stage VARCHAR,
+    pipeline VARCHAR,
+    description TEXT,
+    amount DECIMAL,
+    close_date TIMESTAMP,
+    deal_properties JSON,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+```
 
 **For User Extraction:**
 ```sql
@@ -135,19 +154,17 @@ CREATE TABLE scan_results (
 ```
 
 **Indexes (Customize based on your fields):**
-```sql
 -- Basic performance indexes
-CREATE INDEX idx_result_scan_job ON [result_table](scan_job_id);
+CREATE INDEX idx_result_scan_job ON deal_results(scan_job_id);
 
 -- CUSTOMIZE THESE based on your actual fields:
-CREATE INDEX idx_result_custom_field ON [result_table]([your_main_id_field]);
-CREATE INDEX idx_result_search ON [result_table]([your_searchable_field]);
-CREATE INDEX idx_result_filter ON [result_table]([your_filter_field]);
+CREATE INDEX idx_result_hubspot_deal_id ON deal_results(hubspot_deal_id);
+CREATE INDEX idx_result_deal_name ON deal_results(deal_name);
+CREATE INDEX idx_result_deal_stage ON deal_results(deal_stage);
 
 -- Examples for different data types:
--- For users: CREATE INDEX idx_user_email ON user_results(email);
--- For projects: CREATE INDEX idx_project_key ON project_results(project_key);  
--- For events: CREATE INDEX idx_event_time ON calendar_events(start_time);
+-- For deals: CREATE INDEX idx_deal_pipeline ON deal_results(pipeline);
+-- For deals: CREATE INDEX idx_deal_close_date ON deal_results(close_date);
 ```
 
 ---
@@ -159,7 +176,7 @@ CREATE INDEX idx_result_filter ON [result_table]([your_filter_field]);
 ### Primary Relationships
 ```sql
 -- ScanJob to Results (One-to-Many)
-scan_jobs.id ← [result_table].scan_job_id
+scan_jobs.id ← deal_results.scan_job_id
 ```
 
 ### Cascade Behavior
@@ -199,23 +216,24 @@ WHERE scan_id = 'your-scan-id';
 ### Results Management (Customize field names)
 
 ```sql
--- Get paginated results (REPLACE field names with yours)
-SELECT id, [your_id_field], [your_name_field], [your_status_field]
-FROM [result_table] 
+-- Get paginated results
+SELECT id, hubspot_deal_id, deal_name, deal_stage
+FROM deal_results
 WHERE scan_job_id = 'job-id'
-ORDER BY created_at 
+ORDER BY created_at
 LIMIT 100 OFFSET 0;
 
--- Count results by type (REPLACE with your categorization field)
-SELECT [your_category_field], COUNT(*) as count
-FROM [result_table] 
+-- Count results by type
+SELECT deal_stage, COUNT(*) AS count
+FROM deal_results
 WHERE scan_job_id = 'job-id'
-GROUP BY [your_category_field];
+GROUP BY deal_stage;
 
--- Search results (CUSTOMIZE based on your searchable fields)
-SELECT * FROM [result_table] 
-WHERE scan_job_id = 'job-id' 
-AND [your_searchable_field] LIKE '%search_term%';
+-- Search results
+SELECT *
+FROM deal_results
+WHERE scan_job_id = 'job-id'
+AND deal_name LIKE '%search_term%';
 
 -- Example queries for different data types:
 
@@ -266,12 +284,12 @@ INSERT INTO scan_jobs (
 ### Adding Results (Customize with your fields)
 
 ```sql
--- Insert scan results - REPLACE with YOUR field names and values
-INSERT INTO [result_table] (
-    id, scan_job_id, [your_field_1], [your_field_2], [your_field_3]
+-- Insert scan results
+INSERT INTO deal_results (
+    id, scan_job_id, hubspot_deal_id, deal_name, deal_stage
 ) VALUES 
-('uuid-3', 'uuid-1', '[value_1]', '[value_2]', '[value_3]'),
-('uuid-4', 'uuid-1', '[value_1]', '[value_2]', '[value_3]');
+('uuid-3', 'uuid-1', '123456', 'Enterprise Deal', 'closedwon'),
+('uuid-4', 'uuid-1', '789012', 'Mid-Market Deal', 'presentationscheduled');
 
 -- Examples for different data types:
 
@@ -320,6 +338,7 @@ WHERE scan_id = 'my-scan-001';
 
 ### Result Table Naming
 Replace `[result_table]` with your preferred name:
+- `deal_results` (HubSpot deal extraction results)
 - `scan_results` (generic)
 - `user_results` (specific to user scans)
 - `extraction_results` (for data extraction)
@@ -329,6 +348,8 @@ Replace `[result_table]` with your preferred name:
 ### Result Table Customization Examples
 
 **Replace `[result_table]` and customize fields for your specific data:**
+Use `deal_results` and the deal-specific fields defined above (hubspot_deal_id, deal_name, deal_stage, pipeline, amount, close_date).
+
 
 **1. User/People Data:**
 ```sql
@@ -543,5 +564,5 @@ CREATE TRIGGER update_scan_jobs_updated_at
 ---
 
 **Database Schema Version**: 1.0  
-**Last Updated**: [Current Date]  
+**Last Updated**: 2026-01-03  
 **Compatible With**: PostgreSQL, MySQL, SQLite, SQL Server
