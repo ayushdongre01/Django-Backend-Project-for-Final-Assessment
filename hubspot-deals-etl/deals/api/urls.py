@@ -1,12 +1,14 @@
 from django.urls import path
 from deals.api.views import (
     StartScanAPIView,
-    ScanStatusAPIView,
-    ScanResultsAPIView,
+    ScanJobListAPIView,
+    ScanJobDetailAPIView,
+    ScanJobResultsAPIView,
 )
 
 urlpatterns = [
     path("scan/start/", StartScanAPIView.as_view()),
-    path("scan/status/<str:scan_job_id>/", ScanStatusAPIView.as_view()),
-    path("scan/results/<str:scan_job_id>/", ScanResultsAPIView.as_view()),
+    path("scan/jobs/", ScanJobListAPIView.as_view()),
+    path("scan/jobs/<uuid:id>/", ScanJobDetailAPIView.as_view()),
+    path("scan/jobs/<uuid:id>/results/", ScanJobResultsAPIView.as_view()),
 ]

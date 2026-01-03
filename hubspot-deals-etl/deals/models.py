@@ -11,16 +11,15 @@ class ScanJob(models.Model):
 
 
 class DealResult(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     scan_job = models.ForeignKey(ScanJob, on_delete=models.CASCADE)
-
-    deal_id = models.CharField(max_length=100, null=True, blank=True)    # ✅ NOT hubspot_deal_id
+    deal_id = models.CharField(max_length=255, null=True, blank=True)   # ← THIS LINE
     deal_name = models.CharField(max_length=255)
-    pipeline = models.CharField(max_length=100)
-    stage = models.CharField(max_length=100)          # ✅ NOT deal_stage
+    pipeline = models.CharField(max_length=255)
+    stage = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=12, decimal_places=2, null=True)
-    close_date = models.DateTimeField(null=True)
-
+    close_date = models.DateField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
 
 

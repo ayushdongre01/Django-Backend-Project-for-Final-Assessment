@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.shortcuts import get_object_or_404
 
 from deals.models import ScanJob, DealResult
 from deals.api.serializers import ScanJobSerializer, DealResultSerializer
@@ -75,5 +76,23 @@ class ScanStatusAPIView(APIView):
 class ScanResultsAPIView(APIView):
     def get(self, request, scan_job_id):
         results = DealResult.objects.filter(scan_job_id=scan_job_id)
+        serializer = DealResultSerializer(results, many=True)
+        return Response(serializer.data)
+
+class ScanJobListAPIView(APIView):
+    def get(self, request):
+        jobs = ScanJob.objects.order_by("-created_at")
+        serializer = ScanJobSerializer(jobs, many=True)
+        return Response(serializer.data)
+
+class ScanJobDetailAPIView(APIView):
+    def get(self, request, id):
+        job = get_object_or_404(ScanJob, id=id)
+        serializer = ScanJobSerializer(job)
+        return Response(serializer.data)
+
+class ScanJobResultsAPIView(APIView):
+    def get(self, request, id):
+        results = DealResult.objects.filter(scan_job_id=id)
         serializer = DealResultSerializer(results, many=True)
         return Response(serializer.data)
